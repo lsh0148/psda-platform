@@ -1,0 +1,10 @@
+.share-equation { display: flex; align-items: center; gap: 7px; margin-top: 18px; }
+.share-equation > div { min-width: 66px; padding: 8px 9px; border: 1px solid #29465b; border-radius: 3px; background: #091725; text-align: center; }
+.share-equation span, .share-equation b { display: block; }
+.share-equation span { color: #5f788d; font-size: 7px; }
+.share-equation b { margin-top: 4px; color: #a8becc; font: 600 13px monospace; }
+.share-equation > i { color: #527086; font-style: normal; }
+.share-equation .sum { border-color: var(--cyan); }
+.share-equation .sum b { color: var(--cyan); }
+.demo-note { margin-top: 9px !important; color: #516c81 !important; font-size: 8px !important; line-height: 1.5 !important; }
+@media (max-width: 980px) { .share-equation { flex-wrap: wrap; } }
