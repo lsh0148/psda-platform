@@ -17,6 +17,9 @@ const computeChartEl = ref(null)
 const uploadChartEl = ref(null)
 const aggregateChartEl = ref(null)
 const perfScenario = ref('length')
+const anomalyRatio = ref(0.25)
+const simulating = ref(false)
+const privacyData = ref(null)
 let chart
 let perfCharts = []
 let liveTimer
@@ -60,6 +63,11 @@ const statusText = { normal: '运行平稳', warning: '负荷偏高', critical: 
 const statusClass = (status) => `state-${status}`
 const currentRegion = computed(() => selectedCell.value || overview.value.regions[0] || {})
 const criticalRegions = computed(() => overview.value.regions.filter(r => r.status !== 'normal'))
+const regionIndex = (region) => parseInt(region.code || '0', 2)
+const spatialRegions = computed(() => [...overview.value.regions].sort((a, b) => a.y - b.y || a.x - b.x))
+const curvePath = (list) => list.map(r => `${50 + r.x * 100},${50 + r.y * 100}`).join(' ')
+const hilbertPath = computed(() => curvePath(overview.value.regions))
+const rowScanPath = computed(() => curvePath(spatialRegions.value))
 const currentStep = computed(() => {
   if (active.value === 'devices') return 0
   if (active.value === 'encoding') return 1
@@ -85,7 +93,7 @@ async function fetchData() {
 }
 
 function renderChart() {
-  if (!chartEl.value) return
+  if (!chartEl.value || !chartEl.value.clientWidth) return
   chart ||= echarts.init(chartEl.value)
   chart.setOption({
     backgroundColor: 'transparent',
@@ -149,12 +157,35 @@ function startEncoding() {
   }, 160)
 }
 
-function runPrivacy() {
+async function fetchPrivacy() {
+  const code = currentRegion.value.code
+  const res = await fetch(`${API}/privacy-demo${code ? `?region=${code}` : ''}`)
+  privacyData.value = await res.json()
+}
+
+async function runPrivacy() {
+  await fetchPrivacy()
   privacyStep.value = 0
   const timer = setInterval(() => {
     privacyStep.value += 1
     if (privacyStep.value >= 3) clearInterval(timer)
   }, 850)
+}
+
+async function simulateLoads() {
+  simulating.value = true
+  try {
+    const res = await fetch(`${API}/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ anomaly_ratio: anomalyRatio.value }),
+    })
+    overview.value = await res.json()
+    selectedCell.value = null
+    await fetchPrivacy()
+  } finally {
+    simulating.value = false
+  }
 }
 
 function chooseRegion(region) { selectedCell.value = region }
@@ -165,11 +196,15 @@ function goStep(index) {
 }
 
 watch(active, async (page) => {
-  if (page === 'results') { await nextTick(); renderChart() }
-  if (page === 'performance') { await nextTick(); renderPerformanceCharts() }
+  if (page === 'results') { await nextTick(); renderChart(); chart?.resize() }
+  if (page === 'performance') { await nextTick(); renderPerformanceCharts(); perfCharts.forEach(c => c.resize()) }
+  if (page === 'privacy') { await fetchPrivacy() }
 })
 
-onMounted(() => { fetchData(); window.addEventListener('resize', () => { chart?.resize(); perfCharts.forEach(c => c.resize()) }) })
+onMounted(() => {
+  fetchData().then(fetchPrivacy)
+  window.addEventListener('resize', () => { chart?.resize(); perfCharts.forEach(c => c.resize()) })
+})
 onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); chart?.dispose(); perfCharts.forEach(c => c.dispose()) })
 </script>
 
@@ -218,18 +253,19 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           </div>
           <div class="overview-grid">
             <article class="panel map-panel">
-              <div class="panel-head"><div><small>REGIONAL POWER GRID</small><h3>区域电力分布</h3></div><div class="legend"><i class="normal"></i>正常<i class="warning"></i>偏高<i class="critical"></i>异常</div></div>
+              <div class="panel-head"><div><small>REGIONAL POWER GRID</small><h3>区域电力分布</h3></div><div class="grid-actions"><div class="legend"><i class="normal"></i>正常<i class="warning"></i>偏高<i class="critical"></i>异常</div><label class="ratio-picker">异常比例<select v-model.number="anomalyRatio"><option :value="0.1">10%</option><option :value="0.25">25%</option><option :value="0.4">40%</option></select></label><button class="outline compact" :disabled="simulating" @click="simulateLoads">{{ simulating ? '生成中…' : '随机生成负荷' }}</button></div></div>
               <div class="power-grid">
-                <button v-for="region in overview.regions" :key="region.code" :class="[statusClass(region.status), { selected: currentRegion.code === region.code }]" @click="chooseRegion(region)">
+                <button v-for="region in spatialRegions" :key="region.code" :class="[statusClass(region.status), { selected: currentRegion.code === region.code }]" @click="chooseRegion(region)">
                   <small>{{ region.code }}</small><strong>{{ region.load }}%</strong><span>{{ region.name }}</span>
                 </button>
-                <svg class="hilbert-overlay" viewBox="0 0 400 400" preserveAspectRatio="none"><polyline points="50,350 50,250 150,250 150,350 250,350 350,350 350,250 250,250 250,150 350,150 350,50 250,50 150,50 150,150 50,150 50,50" /></svg>
+                <svg class="hilbert-overlay" viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg>
               </div>
             </article>
             <article class="panel detail-panel">
               <div class="panel-head"><div><small>REGION DETAIL</small><h3>{{ currentRegion.name }} · {{ currentRegion.code }}</h3></div><span :class="['status-pill', statusClass(currentRegion.status)]">{{ statusText[currentRegion.status] }}</span></div>
               <div class="load-ring" :style="{ '--load': `${currentRegion.load * 3.6}deg` }"><div><strong>{{ currentRegion.load }}</strong><span>% 区域负荷</span></div></div>
               <dl><div><dt>接入设备</dt><dd>{{ currentRegion.devices }} 台</dd></div><div><dt>电压均值</dt><dd>{{ currentRegion.voltage }} V</dd></div><div><dt>聚合指数</dt><dd>{{ currentRegion.aggregate }}</dd></div><div><dt>空间坐标</dt><dd>({{ currentRegion.x }}, {{ currentRegion.y }})</dd></div></dl>
+              <p class="metric-note">聚合指数 = 该区域 {{ currentRegion.devices }} 台设备的负荷经 DPF 聚合后的总量，即论文中管理部门对各区域求和得到的结果；接入设备数与电压均值不随模拟刷新变化。</p>
               <button class="primary" @click="go('results')">查看分析结果 <span>→</span></button>
             </article>
           </div>
@@ -241,8 +277,8 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
             <article class="panel encoding-card">
               <div class="panel-head"><div><small>2ND ORDER CURVE · DEMO</small><h3>二维位置到一维编码</h3></div><button class="primary compact" @click="startEncoding">{{ encoding ? '编码中…' : '开始编码' }}</button></div>
               <div class="encode-grid">
-                <button v-for="(region, i) in overview.regions" :key="region.code" :class="[{ passed: i < encodedCount, current: i === encodedCount - 1 }, statusClass(region.status)]" @click="chooseRegion(region)"><span>{{ i }}</span><b>{{ region.code }}</b><small>({{ region.x }},{{ region.y }})</small></button>
-                <svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline points="50,350 50,250 150,250 150,350 250,350 350,350 350,250 250,250 250,150 350,150 350,50 250,50 150,50 150,150 50,150 50,50" /></svg>
+                <button v-for="region in spatialRegions" :key="region.code" :class="[{ passed: regionIndex(region) < encodedCount, current: regionIndex(region) === encodedCount - 1 }, statusClass(region.status)]" @click="chooseRegion(region)"><span>{{ regionIndex(region) }}</span><b>{{ region.code }}</b><small>({{ region.x }},{{ region.y }})</small></button>
+                <svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg>
               </div>
             </article>
             <article class="panel formula-card">
@@ -253,8 +289,8 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           </div>
           <article class="panel encoding-compare">
             <div class="compare-copy"><small>WHY HILBERT CURVE</small><h3>为什么使用空间填充曲线</h3><p>逐行编码在换行位置会让连续编号跨越较大的物理距离；Hilbert曲线通过递归旋转和连接，使序列中相邻编码尽可能对应现实中的相邻区域。</p><div class="locality-metric"><span>空间局部性</span><b>Hilbert 更优</b></div></div>
-            <div class="scan-demo"><div class="compare-title"><span>普通逐行扫描</span><b>跨行跳跃</b></div><div class="mini-grid row-scan"><i v-for="n in 16" :key="n">{{ n - 1 }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline points="50,50 150,50 250,50 350,50 50,150 150,150 250,150 350,150 50,250 150,250 250,250 350,250 50,350 150,350 250,350 350,350" /></svg></div></div>
-            <div class="scan-demo"><div class="compare-title"><span>Hilbert曲线扫描</span><b class="good">保持邻近</b></div><div class="mini-grid hilbert-scan"><i v-for="n in 16" :key="n">{{ n - 1 }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline points="50,350 50,250 150,250 150,350 250,350 350,350 350,250 250,250 250,150 350,150 350,50 250,50 150,50 150,150 50,150 50,50" /></svg></div></div>
+            <div class="scan-demo"><div class="compare-title"><span>普通逐行扫描</span><b>跨行跳跃</b></div><div class="mini-grid row-scan"><i v-for="region in spatialRegions" :key="region.code">{{ region.y * 4 + region.x }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="rowScanPath" /></svg></div></div>
+            <div class="scan-demo"><div class="compare-title"><span>Hilbert曲线扫描</span><b class="good">保持邻近</b></div><div class="mini-grid hilbert-scan"><i v-for="region in spatialRegions" :key="region.code">{{ regionIndex(region) }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg></div></div>
           </article>
         </section>
 
@@ -273,16 +309,31 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           <div class="section-title"><div><span>04 / DPF PRIVACY</span><h2>双服务器隐私计算</h2></div><p>DPF 将区域编码和测量值拆分为两个密钥份额，单台服务器无法推断原始信息。</p></div>
           <article class="panel privacy-panel">
             <div class="privacy-flow">
-              <div :class="['flow-node device-node', { active: privacyStep >= 0 }]"><span>IoT</span><b>感知节点</b><small>区域 0111 · 负荷 85</small></div>
+              <div :class="['flow-node device-node', { active: privacyStep >= 0 }]"><span>IoT</span><b>感知节点</b><small v-if="privacyData">区域 {{ privacyData.target.code }} · 负荷 {{ privacyData.target.load }}</small><small v-else>•••</small></div>
               <div class="split-lines"><i></i><i></i></div>
               <div class="server-stack">
-                <div :class="['flow-node server-node', { active: privacyStep >= 1 }]"><span>S₀</span><b>协作服务器 A</b><small>份额输出 {{ privacyStep >= 1 ? '+132' : '•••' }}</small></div>
-                <div :class="['flow-node server-node', { active: privacyStep >= 1 }]"><span>S₁</span><b>协作服务器 B</b><small>份额输出 {{ privacyStep >= 1 ? '−47' : '•••' }}</small></div>
+                <div :class="['flow-node server-node', { active: privacyStep >= 1 }]"><span>S₀</span><b>协作服务器 A</b><small>{{ privacyStep >= 1 && privacyData ? '持有 k₀ · ' + privacyData.keys.server_a.replace('k0: ', '') : '•••' }}</small></div>
+                <div :class="['flow-node server-node', { active: privacyStep >= 1 }]"><span>S₁</span><b>协作服务器 B</b><small>{{ privacyStep >= 1 && privacyData ? '持有 k₁ · ' + privacyData.keys.server_b.replace('k1: ', '') : '•••' }}</small></div>
               </div>
               <div class="merge-lines"><i></i><i></i></div>
-              <div :class="['flow-node result-node', { active: privacyStep >= 2 }]"><span>Σ</span><b>安全聚合结果</b><small>{{ privacyStep >= 2 ? '132 + (−47) = 85' : '只恢复区域统计值' }}</small></div>
+              <div :class="['flow-node result-node', { active: privacyStep >= 2 }]"><span>Σ</span><b>安全聚合结果</b><small>{{ privacyStep >= 2 && privacyData ? `仅 ${privacyData.target.code} 处恢复为 ${privacyData.target.load}` : '只恢复区域统计值' }}</small></div>
             </div>
-            <div class="privacy-copy"><small>NON-COLLUDING ARCHITECTURE</small><h3>单点不可见，联合可计算</h3><p>两个服务器遵循协议但可能尝试推断额外信息，因此系统假设二者不合谋。任一服务器单独持有的份额都不会暴露目标区域和原始负荷。</p><button class="primary" @click="runPrivacy">运行一次隐私计算 <span>→</span></button><div class="share-equation"><div><span>服务器A</span><b>{{ privacyStep >= 1 ? '+132' : '?' }}</b></div><i>+</i><div><span>服务器B</span><b>{{ privacyStep >= 1 ? '−47' : '?' }}</b></div><i>=</i><div class="sum"><span>聚合负荷</span><b>{{ privacyStep >= 2 ? '85' : '?' }}</b></div></div><p class="demo-note">演示数值仅用于解释秘密份额的组合关系；真实DPF份额是密码学结构，单个数值不能解释为用户负荷。</p><div class="step-status"><i :class="{ done: privacyStep >= 1 }"></i>生成 DPF 密钥份额<i :class="{ done: privacyStep >= 2 }"></i>双服务器分别求值<i :class="{ done: privacyStep >= 3 }"></i>恢复聚合结果</div></div>
+            <div class="privacy-copy"><small>NON-COLLUDING ARCHITECTURE</small><h3>单点不可见，联合可计算</h3><p>两个服务器遵循协议但可能尝试推断额外信息，因此系统假设二者不合谋。任一服务器单独持有的份额都不会暴露目标区域和原始负荷。</p><button class="primary" @click="runPrivacy">运行一次隐私计算 <span>→</span></button><div class="share-equation" v-if="privacyData"><div><span>服务器A 在 α 处</span><b>{{ privacyStep >= 1 ? privacyData.evaluation.server_a[regionIndex(privacyData.target)] : '?' }}</b></div><i>+</i><div><span>服务器B 在 α 处</span><b>{{ privacyStep >= 1 ? privacyData.evaluation.server_b[regionIndex(privacyData.target)] : '?' }}</b></div><i>=</i><div class="sum"><span>聚合负荷 β</span><b>{{ privacyStep >= 2 ? privacyData.target.load : '?' }}</b></div></div><div class="step-status"><i :class="{ done: privacyStep >= 1 }"></i>① 按 Hilbert 编码 α 生成密钥份额 k₀ / k₁<i :class="{ done: privacyStep >= 2 }"></i>② 两台服务器分别求值 Eval(i, kᵢ, x)<i :class="{ done: privacyStep >= 3 }"></i>③ 部门求和，仅在 α 处得到 β</div></div>
+          </article>
+          <article class="panel dpf-detail" v-if="privacyData">
+            <div class="panel-head"><div><small>DPF EVALUATION · ALL {{ privacyData.evaluation.codes.length }} CODES</small><h3>两个密钥在全部区域编码上的求值</h3></div><span class="status-pill state-normal">α = {{ privacyData.target.code }} · β = {{ privacyData.target.load }}</span></div>
+            <div class="dpf-table">
+              <div class="dpf-row dpf-head"><span class="dpf-label">区域编码 x</span><b v-for="c in privacyData.evaluation.codes" :key="c" :class="{ target: c === privacyData.target.code }">{{ c }}</b></div>
+              <div class="dpf-row"><span class="dpf-label">Eval(0, k₀, x)</span><b v-for="(v, i) in privacyData.evaluation.server_a" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
+              <div class="dpf-row"><span class="dpf-label">Eval(1, k₁, x)</span><b v-for="(v, i) in privacyData.evaluation.server_b" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
+              <div class="dpf-row dpf-sum"><span class="dpf-label">相加 mod {{ privacyData.field }}</span><b v-for="(v, i) in privacyData.evaluation.sum" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
+            </div>
+            <div class="dpf-notes">
+              <p><b>① 密钥生成 Gen(λ, α, β) → (k₀, k₁)：</b>IoT 设备把区域位置编码为 α = {{ privacyData.target.code }}、负荷记为 β = {{ privacyData.target.load }}，生成一对密钥：{{ privacyData.keys.server_a }} 交给服务器 A，{{ privacyData.keys.server_b }} 交给服务器 B；任一密钥单独看都不包含 α 与 β 的信息。</p>
+              <p><b>② 双服务器求值 Eval(i, kᵢ, x)：</b>两台服务器各自在全部 16 个区域编码上求值，得到两组份额，单组份额与随机数不可区分。</p>
+              <p><b>③ 部门求和：</b>两组份额相加后，只有 α = {{ privacyData.target.code }} 位置得到 β = {{ privacyData.target.load }}，其余位置为 0，因此管理部门只恢复出目标区域的统计值。</p>
+              <p class="demo-note">演示份额用有限域 ℤ{{ privacyData.field }} 上的加法表示组合关系；论文中的真实份额由伪随机生成器递归展开，单个数值不能解释为用户负荷。</p>
+            </div>
           </article>
         </section>
 

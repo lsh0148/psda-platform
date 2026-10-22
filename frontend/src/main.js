@@ -7,5 +7,7 @@ import './performance.css'
 import './security.css'
 import './privacy-demo.css'
 import './hilbert-compare.css'
+import './random-load.css'
+import './dpf-detail.css'
 
 createApp(App).mount('#app')

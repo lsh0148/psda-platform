@@ -1,0 +1,6 @@
+.grid-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ratio-picker { display: flex; align-items: center; gap: 7px; font-size: 10px; color: #718aa0; }
+.ratio-picker select { background: #0a1928; color: #d8e6ef; border: 1px solid #285169; border-radius: 4px; padding: 6px 8px; font: inherit; font-size: 11px; cursor: pointer; }
+.outline.compact { padding: 7px 12px; font-size: 11px; }
+.outline:disabled { opacity: .55; cursor: progress; }
+.metric-note { margin: 0 0 18px; font-size: 10px; line-height: 1.7; color: #6b8399; }

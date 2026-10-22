@@ -1,0 +1,13 @@
+.dpf-detail { margin-top: 14px; }
+.dpf-table { overflow-x: auto; padding-bottom: 4px; }
+.dpf-row { display: grid; grid-template-columns: 150px repeat(16, minmax(40px, 1fr)); gap: 5px; align-items: center; margin-bottom: 5px; }
+.dpf-row b { font: 600 11px monospace; text-align: center; padding: 7px 2px; border: 1px solid #172c40; border-radius: 3px; color: #9db4c6; background: #0a1725; }
+.dpf-row .dpf-label { font-size: 10px; color: #71889c; }
+.dpf-row b.target { border-color: var(--cyan); color: #061820; background: var(--cyan); }
+.dpf-head b { color: #6c8296; background: transparent; border-color: transparent; font-weight: 500; }
+.dpf-head b.target { color: var(--cyan); background: transparent; border-color: transparent; }
+.dpf-sum b { background: #0d292f; }
+.dpf-sum b.target { background: var(--cyan); color: #061820; }
+.dpf-notes { margin-top: 18px; display: grid; gap: 10px; }
+.dpf-notes p { margin: 0; font-size: 11px; line-height: 1.8; color: #8299ac; }
+.dpf-notes p b { color: #d9e7f2; }
