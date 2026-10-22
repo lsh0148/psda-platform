@@ -48,11 +48,20 @@ LOADS = [0] * CELLS
 
 
 def simulate(anomaly_ratio):
-    """为每个区域分配随机负荷，并按比例注入异常区域。"""
+    """为每个区域分配随机负荷，并按比例注入偏高和异常区域。"""
     ratio = max(0.0, min(1.0, anomaly_ratio))
-    anomalies = set(rng.sample(range(CELLS), round(CELLS * ratio)))
+    attention_count = round(CELLS * ratio)
+    attention_regions = rng.sample(range(CELLS), attention_count)
+    critical_count = attention_count // 2
+    critical_regions = set(attention_regions[:critical_count])
+    warning_regions = set(attention_regions[critical_count:])
     for index in range(CELLS):
-        LOADS[index] = rng.randint(88, 98) if index in anomalies else rng.randint(45, 72)
+        if index in critical_regions:
+            LOADS[index] = rng.randint(88, 98)
+        elif index in warning_regions:
+            LOADS[index] = rng.randint(74, 87)
+        else:
+            LOADS[index] = rng.randint(45, 72)
         DEVICE_LOADS[index] = [rng.uniform(0.6, 1.9) for _ in range(DEVICE_COUNTS[index])]
 
 

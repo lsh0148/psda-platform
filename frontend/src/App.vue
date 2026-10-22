@@ -253,7 +253,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           </div>
           <div class="overview-grid">
             <article class="panel map-panel">
-              <div class="panel-head"><div><small>REGIONAL POWER GRID</small><h3>区域电力分布</h3></div><div class="grid-actions"><div class="legend"><i class="normal"></i>正常<i class="warning"></i>偏高<i class="critical"></i>异常</div><label class="ratio-picker">异常比例<select v-model.number="anomalyRatio"><option :value="0.1">10%</option><option :value="0.25">25%</option><option :value="0.4">40%</option></select></label><button class="outline compact" :disabled="simulating" @click="simulateLoads">{{ simulating ? '生成中…' : '随机生成负荷' }}</button></div></div>
+              <div class="panel-head"><div><small>REGIONAL POWER GRID</small><h3>区域电力分布</h3></div><div class="grid-actions"><div class="legend"><i class="normal"></i>正常<i class="warning"></i>偏高<i class="critical"></i>异常</div><label class="ratio-picker">关注比例<select v-model.number="anomalyRatio"><option :value="0.1">10%</option><option :value="0.25">25%</option><option :value="0.4">40%</option></select></label><button class="outline compact" :disabled="simulating" @click="simulateLoads">{{ simulating ? '生成中…' : '随机生成负荷' }}</button></div></div>
               <div class="power-grid">
                 <button v-for="region in spatialRegions" :key="region.code" :class="[statusClass(region.status), { selected: currentRegion.code === region.code }]" @click="chooseRegion(region)">
                   <small>{{ region.code }}</small><strong>{{ region.load }}%</strong><span>{{ region.name }}</span>

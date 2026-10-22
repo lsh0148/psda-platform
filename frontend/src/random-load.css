@@ -4,3 +4,4 @@
 .outline.compact { padding: 7px 12px; font-size: 11px; }
 .outline:disabled { opacity: .55; cursor: progress; }
 .metric-note { margin: 0 0 18px; font-size: 10px; line-height: 1.7; color: #6b8399; }
+.legend .normal { background: #718aa0; }
