@@ -10,5 +10,6 @@ import './hilbert-compare.css'
 import './random-load.css'
 import './dpf-detail.css'
 import './device-monitor.css'
+import './day-theme.css'
 
 createApp(App).mount('#app')

@@ -4,6 +4,7 @@ import * as echarts from 'echarts'
 
 const API = '/api'
 const active = ref('overview')
+const theme = ref(localStorage.getItem('psda-theme') || 'day')
 const loading = ref(true)
 const live = ref(false)
 const encoding = ref(false)
@@ -99,32 +100,41 @@ async function fetchData() {
 
 function renderChart() {
   if (!chartEl.value || !chartEl.value.clientWidth) return
+  const palette = theme.value === 'day'
+    ? { tooltip: '#fffdf8', border: '#c9bca9', text: '#2c2925', axis: '#9b8d7d', grid: '#e5ddd1', line: '#b65332', point: '#d87652', area: 'rgba(182,83,50,.2)' }
+    : { tooltip: '#101d2e', border: '#2d4967', text: '#fff', axis: '#7890a8', grid: '#182b40', line: '#32d8d0', point: '#9ef6ed', area: 'rgba(50,216,208,.28)' }
   chart ||= echarts.init(chartEl.value)
   chart.setOption({
     backgroundColor: 'transparent',
     grid: { left: 38, right: 18, top: 28, bottom: 30 },
-    tooltip: { trigger: 'axis', backgroundColor: '#101d2e', borderColor: '#2d4967', textStyle: { color: '#fff' } },
-    xAxis: { type: 'category', data: trend.value.map(x => x.time), axisLine: { lineStyle: { color: '#37516c' } }, axisTick: { show: false }, axisLabel: { show: false } },
-    yAxis: { type: 'value', min: 40, name: '百分比', nameTextStyle: { color: '#7890a8', padding: [0, 0, 4, 0] }, axisLine: { show: false }, splitLine: { lineStyle: { color: '#182b40' } }, axisLabel: { color: '#7890a8', formatter: '{value}%' } },
+    tooltip: { trigger: 'axis', backgroundColor: palette.tooltip, borderColor: palette.border, textStyle: { color: palette.text } },
+    xAxis: { type: 'category', data: trend.value.map(x => x.time), axisLine: { lineStyle: { color: palette.axis } }, axisTick: { show: false }, axisLabel: { show: false } },
+    yAxis: { type: 'value', min: 40, name: '百分比', nameTextStyle: { color: palette.axis, padding: [0, 0, 4, 0] }, axisLine: { show: false }, splitLine: { lineStyle: { color: palette.grid } }, axisLabel: { color: palette.axis, formatter: '{value}%' } },
     series: [{
       data: trend.value.map(x => x.load), type: 'line', smooth: true, symbol: 'circle', symbolSize: 7,
-      lineStyle: { color: '#32d8d0', width: 3 }, itemStyle: { color: '#9ef6ed' },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(50,216,208,.28)' }, { offset: 1, color: 'rgba(50,216,208,0)' }]) }
+      lineStyle: { color: palette.line, width: 3 }, itemStyle: { color: palette.point },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: palette.area }, { offset: 1, color: 'rgba(0,0,0,0)' }]) }
     }]
   })
 }
 
 function performanceOption(metric, unit) {
   const data = performanceData[perfScenario.value]
-  const colors = { PSDA: '#32d8d0', EPSG: '#ffb74a', FEISG: '#56a4ff', Panther: '#ff636e' }
+  const day = theme.value === 'day'
+  const colors = day
+    ? { PSDA: '#b84c2a', EPSG: '#2f6f8f', FEISG: '#6f7f45', Panther: '#76527f' }
+    : { PSDA: '#32d8d0', EPSG: '#ffb74a', FEISG: '#56a4ff', Panther: '#ff636e' }
+  const chartColors = day
+    ? { tooltip: '#fffdf8', border: '#c9bca9', text: '#2c2925', muted: '#756b60', axis: '#9b8d7d', grid: '#e5ddd1' }
+    : { tooltip: '#101d2e', border: '#2d4967', text: '#fff', muted: '#718aa0', axis: '#58738a', grid: '#172b3e' }
   return {
     animationDuration: 700,
     color: Object.values(colors),
-    tooltip: { trigger: 'axis', backgroundColor: '#101d2e', borderColor: '#2d4967', textStyle: { color: '#fff' } },
-    legend: { top: 0, right: 0, itemWidth: 12, itemHeight: 3, textStyle: { color: '#718aa0', fontSize: 9 } },
+    tooltip: { trigger: 'axis', backgroundColor: chartColors.tooltip, borderColor: chartColors.border, textStyle: { color: chartColors.text } },
+    legend: { top: 0, right: 0, itemWidth: 12, itemHeight: 3, textStyle: { color: chartColors.muted, fontSize: 9 } },
     grid: { left: 42, right: 16, top: 42, bottom: 34 },
-    xAxis: { type: 'category', name: data.xName, nameTextStyle: { color: '#58738a', fontSize: 9 }, data: data.x, axisLine: { lineStyle: { color: '#29445a' } }, axisLabel: { color: '#70889c', fontSize: 9 } },
-    yAxis: { type: 'value', name: unit, nameTextStyle: { color: '#58738a', fontSize: 9 }, splitLine: { lineStyle: { color: '#172b3e' } }, axisLabel: { color: '#70889c', fontSize: 9 } },
+    xAxis: { type: 'category', name: data.xName, nameTextStyle: { color: chartColors.axis, fontSize: 9 }, data: data.x, axisLine: { lineStyle: { color: chartColors.axis } }, axisLabel: { color: chartColors.muted, fontSize: 9 } },
+    yAxis: { type: 'value', name: unit, nameTextStyle: { color: chartColors.axis, fontSize: 9 }, splitLine: { lineStyle: { color: chartColors.grid } }, axisLabel: { color: chartColors.muted, fontSize: 9 } },
     series: Object.entries(data[metric]).map(([name, values]) => ({ name, data: values, type: 'line', smooth: true, symbolSize: name === 'PSDA' ? 7 : 5, lineStyle: { width: name === 'PSDA' ? 3 : 1.5, color: colors[name] }, itemStyle: { color: colors[name] } })),
   }
 }
@@ -147,6 +157,14 @@ function toggleLive() {
   live.value = !live.value
   if (live.value) liveTimer = setInterval(fetchData, 3500)
   else clearInterval(liveTimer)
+}
+
+async function toggleTheme() {
+  theme.value = theme.value === 'night' ? 'day' : 'night'
+  localStorage.setItem('psda-theme', theme.value)
+  await nextTick()
+  renderChart()
+  if (perfCharts.length) renderPerformanceCharts()
 }
 
 function startEncoding() {
@@ -218,7 +236,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="`theme-${theme}`">
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark"><span></span><span></span><span></span></div>
@@ -235,7 +253,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
     <main>
       <header>
         <div><p>SMART GRID · PRIVACY PRESERVING</p><h1>隐私保护型电力分布分析平台</h1></div>
-        <div class="header-actions"><span class="last-update">数据更新 {{ overview.updated_at }}</span><button class="outline" @click="toggleLive">{{ live ? '暂停实时刷新' : '启动实时监测' }}</button></div>
+        <div class="header-actions"><span class="last-update">数据更新 {{ overview.updated_at }}</span><button class="outline theme-toggle" @click="toggleTheme">{{ theme === 'night' ? '☀ 白天模式' : '◐ 夜间模式' }}</button><button class="outline" @click="toggleLive">{{ live ? '暂停实时刷新' : '启动实时监测' }}</button></div>
       </header>
 
       <div class="process-bar">

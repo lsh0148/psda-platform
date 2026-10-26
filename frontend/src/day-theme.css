@@ -1,0 +1,187 @@
+.theme-day {
+  --cyan: #b65332;
+  --blue: #3c7189;
+  --muted: #756b60;
+  --panel: #fffdf8;
+  --line: #d9cfc1;
+  --amber: #a66b16;
+  --red: #a53d49;
+  color: #2c2925;
+  background: #f3eee5;
+}
+
+.theme-day h1,
+.theme-day h2,
+.theme-day h3,
+.theme-day .brand strong {
+  font-family: "Noto Serif SC", "Songti SC", Georgia, serif;
+  letter-spacing: .01em;
+}
+
+.theme-day .sidebar {
+  background: #ebe3d7;
+  border-color: #cfc1af;
+}
+
+.theme-day .brand-mark { border-color: #b65332; }
+.theme-day .brand small,
+.theme-day nav button small,
+.theme-day .system-state small,
+.theme-day .last-update { color: #807467; }
+.theme-day nav button { color: #655d54; }
+.theme-day nav button:hover { color: #2c2925; background: #e2d7c8; }
+.theme-day nav button.active {
+  color: #2c2925;
+  background: linear-gradient(90deg, rgba(182,83,50,.13), transparent);
+  box-shadow: inset 2px 0 #b65332;
+}
+.theme-day nav button.active .nav-dot { background: #b65332; border-color: #b65332; box-shadow: none; }
+.theme-day .system-state { border-color: #cfc1af; }
+.theme-day .system-state i,
+.theme-day .live-badge i { background: #4b8a68; box-shadow: none; }
+
+.theme-day main { background: #f7f3ec; }
+.theme-day header { border-color: #d9cfc1; }
+.theme-day header p,
+.theme-day .section-title span,
+.theme-day .panel-head small,
+.theme-day .panel > small,
+.theme-day .privacy-copy > small { color: #b65332; }
+.theme-day .section-title > p { color: #756b60; }
+.theme-day .outline {
+  color: #514a43;
+  border-color: #b9ab99;
+  background: rgba(255,253,248,.55);
+}
+.theme-day .outline:hover { border-color: #b65332; color: #8f3e24; }
+.theme-day .primary { color: #fffdf8; background: #b65332; border-color: #b65332; }
+
+.theme-day .process-bar { background: rgba(243,238,229,.88); border-color: #d9cfc1; }
+.theme-day .process-caption b { color: #403a34; }
+.theme-day .process-line:before { background: #cfc1af; }
+.theme-day .process-fill { background: #b65332; box-shadow: none; }
+.theme-day .process-line button { color: #8f8274; }
+.theme-day .process-line button i { color: #756b60; border-color: #b9ab99; background: #f7f3ec; }
+.theme-day .process-line button.passed i { color: #fffdf8; border-color: #b65332; background: #b65332; }
+.theme-day .process-line button.passed span { color: #925039; }
+.theme-day .process-line button.current i { box-shadow: none; outline: 2px solid rgba(182,83,50,.18); }
+.theme-day .process-line button.current span { color: #2c2925; }
+
+.theme-day .metrics article,
+.theme-day .panel {
+  color: #2c2925;
+  background: #fffdf8;
+  border-color: #d9cfc1;
+}
+.theme-day .metrics article:after { border-color: #e6ddd1; }
+.theme-day .metrics span,
+.theme-day .metrics small { color: #807467; }
+.theme-day .legend { color: #756b60; }
+.theme-day .ratio-picker { color: #756b60; }
+.theme-day .ratio-picker select { color: #2c2925; background: #fffdf8; border-color: #b9ab99; }
+
+.theme-day .power-grid button,
+.theme-day .encode-grid button {
+  color: #2c2925;
+  border-color: #d2c6b6;
+  background: #faf6ef;
+}
+.theme-day .power-grid button small,
+.theme-day .power-grid button span,
+.theme-day .encode-grid button span,
+.theme-day .encode-grid button small { color: #827568; }
+.theme-day .power-grid button:hover,
+.theme-day .power-grid button.selected { border-color: #b65332; }
+.theme-day .power-grid button.state-warning { background: #fff1d8; }
+.theme-day .power-grid button.state-critical { background: #f9e3e3; }
+.theme-day .hilbert-overlay polyline,
+.theme-day .encode-grid polyline { stroke: rgba(182,83,50,.52); }
+.theme-day .status-pill.state-normal { color: #33755a; background: #e5f2eb; }
+.theme-day .status-pill.state-warning { color: #986117; background: #fff0d2; }
+.theme-day .status-pill.state-critical { color: #9a3744; background: #f8e2e4; }
+.theme-day .load-ring { background: conic-gradient(#b65332 var(--load), #e5ddd1 0); }
+.theme-day .load-ring:after { background: #fffdf8; }
+.theme-day .detail-panel dl div { border-color: #e5ddd1; }
+.theme-day .detail-panel dt,
+.theme-day .metric-note,
+.theme-day .formula-card > p,
+.theme-day .privacy-copy > p { color: #756b60; }
+
+.theme-day .encode-grid button.passed { border-color: #b65332; background: #f5e8df; box-shadow: none; }
+.theme-day .encode-grid button.current { border-color: #8f3e24; box-shadow: none; outline: 2px solid rgba(182,83,50,.18); }
+.theme-day .mapping { border-color: #d9cfc1; }
+.theme-day .mapping span { color: #756b60; }
+.theme-day .mapping i { color: #aa9c8b; }
+.theme-day .compare-copy p,
+.theme-day .locality-metric span,
+.theme-day .compare-title span { color: #756b60; }
+.theme-day .mini-grid i { color: #756b60; background: #faf6ef; border-color: #d2c6b6; }
+.theme-day .hilbert-scan polyline { stroke: rgba(182,83,50,.72); }
+
+.theme-day .tr { border-color: #e5ddd1; }
+.theme-day .tr.th { color: #756b60; background: #f3eee5; }
+.theme-day .tr > span small { color: #918578; }
+.theme-day .bar { background: #e3d9cc; }
+.theme-day .bar i { background: #b65332; }
+.theme-day .device-state.state-normal { color: #33755a; }
+.theme-day .device-state.state-warning { color: #986117; }
+.theme-day .device-state.state-critical { color: #9a3744; }
+
+.theme-day .privacy-flow { border-color: #d9cfc1; }
+.theme-day .flow-node { color: #2c2925; border-color: #cdbfae; background: #faf6ef; }
+.theme-day .flow-node.active { border-color: #b65332; box-shadow: none; }
+.theme-day .flow-node span { color: #b65332; }
+.theme-day .flow-node small,
+.theme-day .step-status { color: #756b60; }
+.theme-day .split-lines:before,
+.theme-day .merge-lines:before,
+.theme-day .split-lines i,
+.theme-day .merge-lines i { border-color: #b9ab99; background-color: transparent; }
+.theme-day .split-lines:before,
+.theme-day .merge-lines:before { background: #b9ab99; }
+.theme-day .share-equation > div { color: #2c2925; background: #faf6ef; border-color: #cdbfae; }
+.theme-day .share-equation span { color: #756b60; }
+.theme-day .share-equation b { color: #403a34; }
+.theme-day .step-status i { background: #cfc1af; }
+.theme-day .step-status i.done { background: #b65332; box-shadow: none; }
+
+.theme-day .dpf-row b { color: #514a43; background: #faf6ef; border-color: #d9cfc1; }
+.theme-day .dpf-row .dpf-label,
+.theme-day .dpf-notes p { color: #756b60; }
+.theme-day .dpf-head b { color: #807467; background: transparent; border-color: transparent; }
+.theme-day .dpf-row b.target,
+.theme-day .dpf-sum b.target { color: #fffdf8; background: #b65332; border-color: #b65332; }
+.theme-day .dpf-sum b { background: #f5e8df; }
+.theme-day .dpf-notes p b { color: #403a34; }
+
+.theme-day .alert-item { border-color: #e5ddd1; }
+.theme-day .alert-item p,
+.theme-day .conclusion p { color: #756b60; }
+.theme-day .conclusion p b { color: #403a34; }
+.theme-day .delta { color: #33755a; }
+
+.theme-day .performance-toolbar { background: #f3eee5; }
+.theme-day .performance-toolbar button { color: #655d54; border-color: #b9ab99; }
+.theme-day .performance-toolbar button.active { color: #fffdf8; background: #b65332; border-color: #b65332; }
+.theme-day .performance-toolbar > span,
+.theme-day .performance-summary p,
+.theme-day .performance-conclusion { color: #756b60; }
+.theme-day .performance-summary article { background: linear-gradient(90deg, rgba(182,83,50,.09), rgba(255,253,248,.7)); border-color: #b65332; }
+.theme-day .performance-conclusion b { color: #403a34; }
+
+.theme-day .security-entities article { background: #fffdf8; }
+.theme-day .security-entities article > span,
+.theme-day .security-entities p,
+.theme-day .visibility-matrix .panel-head > span,
+.theme-day .security-row span,
+.theme-day .boundaries p { color: #756b60; }
+.theme-day .security-entities article > i,
+.theme-day .boundaries li > i { color: #b65332; border-color: #c9a18f; box-shadow: none; }
+.theme-day .security-table,
+.theme-day .security-row { border-color: #d9cfc1; }
+.theme-day .security-row.head { background: #f3eee5; }
+.theme-day .security-row b { color: #403a34; }
+.theme-day .security-row .yes { color: #b65332; }
+
+.theme-day .loading { color: #756b60; }
+.theme-day .loading div { border-color: #d9cfc1; border-top-color: #b65332; }
