@@ -92,16 +92,18 @@ def region_rows():
 
 
 def build_devices(regions):
-    types = [("智能电表", "Smart Meter"), ("充电站", "EV Station"), ("变压器监测器", "Transformer")]
+    """为 16 个空间区域各生成一个汇集区域终端设备的感知节点。"""
+    node_names = [
+        "智能电表汇聚节点", "充电站监测节点", "配电变压器监测节点", "光伏接入监测节点",
+        "储能单元监测节点", "配电柜监测节点", "线路负荷监测节点", "园区用电监测节点",
+    ]
     devices = []
-    for index in range(10):
-        region = regions[(index * 3 + 2) % len(regions)]
-        cn, en = types[index % len(types)]
-        status = region["status"] if index in (3, 7) else "normal"
+    for index, region in enumerate(regions):
         devices.append({
-            "id": f"PSDA-{index + 1:03d}", "name": f"{cn} {index + 1:02d}", "type": en,
+            "id": f"PSDA-N{index + 1:02d}",
+            "name": f"{node_names[index % len(node_names)]} {chr(65 + index)}",
             "region": region["code"], "voltage": round(rng.uniform(217.5, 224.6), 1),
-            "current": round(rng.uniform(3.2, 19.8), 1), "load": region["load"], "status": status,
+            "managed_devices": region["devices"], "load": region["load"], "status": region["status"],
         })
     return devices
 

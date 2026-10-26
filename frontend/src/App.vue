@@ -27,8 +27,8 @@ let encodingTimer
 
 const nav = [
   ['overview', '系统总览', 'Overview'],
-  ['encoding', '空间编码', 'Hilbert Encoding'],
   ['devices', '设备监测', 'IoT Monitoring'],
+  ['encoding', '空间编码', 'Hilbert Encoding'],
   ['privacy', '隐私计算', 'DPF Privacy'],
   ['results', '分析结果', 'Analytics'],
   ['security', '安全模型', 'Security Model'],
@@ -272,7 +272,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
         </section>
 
         <section v-show="active === 'encoding'" class="page">
-          <div class="section-title"><div><span>02 / HILBERT ENCODING</span><h2>希尔伯特空间编码</h2></div><p>将二维电网区域映射为具有空间局部性的一维序列，降低区域数据处理开销。</p></div>
+          <div class="section-title"><div><span>03 / HILBERT ENCODING</span><h2>希尔伯特空间编码</h2></div><p>将二维电网区域映射为具有空间局部性的一维序列，降低区域数据处理开销。</p></div>
           <div class="feature-layout">
             <article class="panel encoding-card">
               <div class="panel-head"><div><small>2ND ORDER CURVE · DEMO</small><h3>二维位置到一维编码</h3></div><button class="primary compact" @click="startEncoding">{{ encoding ? '编码中…' : '开始编码' }}</button></div>
@@ -295,12 +295,12 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
         </section>
 
         <section v-show="active === 'devices'" class="page">
-          <div class="section-title"><div><span>03 / IOT MONITORING</span><h2>物联网设备监测</h2></div><p>智能电表、充电站与变压器监测器持续采集电压、电流和负荷波动。</p></div>
+          <div class="section-title"><div><span>02 / IOT MONITORING</span><h2>物联网设备监测</h2></div><p>16 个区域感知节点分别汇集辖区内智能电表、充电站和变压器监测器的数据。</p></div>
           <article class="panel table-panel">
             <div class="panel-head"><div><small>LIVE SENSOR NODES</small><h3>分布式感知节点</h3></div><span class="live-badge"><i></i>LIVE</span></div>
             <div class="device-table">
-              <div class="tr th"><span>设备名称</span><span>类型</span><span>区域编码</span><span>电压</span><span>电流</span><span>负荷</span><span>状态</span></div>
-              <div class="tr" v-for="device in overview.devices" :key="device.id"><span><b>{{ device.name }}</b><small>{{ device.id }}</small></span><span>{{ device.type }}</span><span class="mono">{{ device.region }}</span><span>{{ device.voltage }} V</span><span>{{ device.current }} A</span><span><i class="bar"><i :style="{ width: device.load + '%' }"></i></i>{{ device.load }}%</span><span :class="['device-state', statusClass(device.status)]">{{ statusText[device.status] }}</span></div>
+              <div class="tr th"><span>感知节点</span><span>区域编码</span><span>下辖设备</span><span>电压均值</span><span>区域负荷</span><span>状态</span></div>
+              <div class="tr" v-for="device in overview.devices" :key="device.id"><span><b>{{ device.name }}</b><small>{{ device.id }}</small></span><span class="mono">{{ device.region }}</span><span>{{ device.managed_devices }} 台</span><span>{{ device.voltage }} V</span><span><i class="bar"><i :style="{ width: device.load + '%' }"></i></i>{{ device.load }}%</span><span :class="['device-state', statusClass(device.status)]">{{ statusText[device.status] }}</span></div>
             </div>
           </article>
         </section>
