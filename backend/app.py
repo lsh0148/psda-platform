@@ -146,9 +146,12 @@ def post_simulate():
 
 @app.get("/api/trend")
 def get_trend():
-    times = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"]
-    loads = [52, 58, 67, 62, 69, 81, 88, 74]
-    return jsonify({"points": [{"time": t, "load": v + rng.randint(-2, 2)} for t, v in zip(times, loads)]})
+    return jsonify({
+        "points": [
+            {"time": format(index, "04b"), "load": load}
+            for index, load in enumerate(LOADS)
+        ]
+    })
 
 
 @app.get("/api/privacy-demo")

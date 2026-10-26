@@ -63,6 +63,11 @@ const statusText = { normal: '运行平稳', warning: '负荷偏高', critical: 
 const statusClass = (status) => `state-${status}`
 const currentRegion = computed(() => selectedCell.value || overview.value.regions[0] || {})
 const criticalRegions = computed(() => overview.value.regions.filter(r => r.status !== 'normal'))
+const trendSummary = computed(() => {
+  if (!trend.value.length) return '平均负荷 --'
+  const average = trend.value.reduce((sum, point) => sum + point.load, 0) / trend.value.length
+  return `本轮平均负荷 ${average.toFixed(1)}%`
+})
 const regionIndex = (region) => parseInt(region.code || '0', 2)
 const spatialRegions = computed(() => [...overview.value.regions].sort((a, b) => a.y - b.y || a.x - b.x))
 const curvePath = (list) => list.map(r => `${50 + r.x * 100},${50 + r.y * 100}`).join(' ')
@@ -99,8 +104,8 @@ function renderChart() {
     backgroundColor: 'transparent',
     grid: { left: 38, right: 18, top: 28, bottom: 30 },
     tooltip: { trigger: 'axis', backgroundColor: '#101d2e', borderColor: '#2d4967', textStyle: { color: '#fff' } },
-    xAxis: { type: 'category', data: trend.value.map(x => x.time), axisLine: { lineStyle: { color: '#37516c' } }, axisLabel: { color: '#7890a8' } },
-    yAxis: { type: 'value', min: 40, axisLine: { show: false }, splitLine: { lineStyle: { color: '#182b40' } }, axisLabel: { color: '#7890a8' } },
+    xAxis: { type: 'category', data: trend.value.map(x => x.time), axisLine: { lineStyle: { color: '#37516c' } }, axisTick: { show: false }, axisLabel: { show: false } },
+    yAxis: { type: 'value', min: 40, name: '百分比', nameTextStyle: { color: '#7890a8', padding: [0, 0, 4, 0] }, axisLine: { show: false }, splitLine: { lineStyle: { color: '#182b40' } }, axisLabel: { color: '#7890a8', formatter: '{value}%' } },
     series: [{
       data: trend.value.map(x => x.load), type: 'line', smooth: true, symbol: 'circle', symbolSize: 7,
       lineStyle: { color: '#32d8d0', width: 3 }, itemStyle: { color: '#9ef6ed' },
@@ -182,6 +187,10 @@ async function simulateLoads() {
     })
     overview.value = await res.json()
     selectedCell.value = null
+    const trendResponse = await fetch(`${API}/trend`).then(r => r.json())
+    trend.value = trendResponse.points
+    await nextTick()
+    renderChart()
     await fetchPrivacy()
   } finally {
     simulating.value = false
@@ -340,7 +349,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
         <section v-show="active === 'results'" class="page">
           <div class="section-title"><div><span>05 / ANALYTICS</span><h2>电力分布分析结果</h2></div><p>呈现区域分布模式并识别可能存在不均衡的范围，为管理部门进一步处置提供依据。</p></div>
           <div class="results-grid">
-            <article class="panel chart-panel"><div class="panel-head"><div><small>LOAD TREND</small><h3>全网聚合负荷趋势</h3></div><span class="delta">↑ 3.8% 较上一时段</span></div><div ref="chartEl" class="chart"></div></article>
+            <article class="panel chart-panel"><div class="panel-head"><div><small>REGIONAL LOAD · CURRENT ROUND</small><h3>本轮 16 区域负荷分布</h3></div><span class="delta">{{ trendSummary }}</span></div><div ref="chartEl" class="chart"></div></article>
             <article class="panel alert-panel"><small>REGIONAL INSIGHTS</small><h3>重点关注区域</h3><div class="alert-item" v-for="r in criticalRegions" :key="r.code"><span :class="statusClass(r.status)">{{ r.code }}</span><div><b>{{ r.name }}</b><p>聚合负荷 {{ r.load }}%，高于邻近区域</p></div><strong>{{ r.status === 'critical' ? '高' : '中' }}</strong></div></article>
           </div>
           <article class="panel conclusion"><div><span>ANALYSIS SUMMARY</span><h3>分析结论</h3></div><p>系统发现 <b>{{ criticalRegions.map(r => r.name).join('、') }}</b> 的聚合负荷存在偏高趋势，可能出现电力分布不均衡。建议电力管理部门优先检查相关区域，并结合实时运行数据进一步确认。</p><button class="outline" @click="go('overview')">返回区域地图</button></article>
