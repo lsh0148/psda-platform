@@ -19,6 +19,8 @@ const uploadChartEl = ref(null)
 const aggregateChartEl = ref(null)
 const perfScenario = ref('length')
 const anomalyRatio = ref(0.25)
+const gridSize = ref(4)
+const gridOptions = [4, 8, 16]
 const simulating = ref(false)
 const privacyData = ref(null)
 let chart
@@ -71,7 +73,19 @@ const trendSummary = computed(() => {
 })
 const regionIndex = (region) => parseInt(region.code || '0', 2)
 const spatialRegions = computed(() => [...overview.value.regions].sort((a, b) => a.y - b.y || a.x - b.x))
-const curvePath = (list) => list.map(r => `${50 + r.x * 100},${50 + r.y * 100}`).join(' ')
+const activeGridSize = computed(() => overview.value.grid_size || 4)
+const gridColumns = computed(() => `repeat(${activeGridSize.value}, 1fr)`)
+const gridDensityClass = computed(() => activeGridSize.value >= 16 ? 'grid-dense' : activeGridSize.value >= 8 ? 'grid-medium' : '')
+const curveOrderLabel = computed(() => {
+  const order = Math.log2(activeGridSize.value)
+  return `${({ 2: '2ND', 3: '3RD', 4: '4TH' })[order] || 'NTH'} ORDER CURVE · DEMO`
+})
+const curvePath = (list) => {
+  const step = 400 / activeGridSize.value
+  return list.map(r => `${step / 2 + r.x * step},${step / 2 + r.y * step}`).join(' ')
+}
+const rowScanIndex = (region) => region.y * activeGridSize.value + region.x
+const dpfColumns = computed(() => `150px repeat(${privacyData.value?.evaluation?.codes?.length || 16}, minmax(34px, 1fr))`)
 const hilbertPath = computed(() => curvePath(overview.value.regions))
 const rowScanPath = computed(() => curvePath(spatialRegions.value))
 const currentStep = computed(() => {
@@ -89,6 +103,7 @@ async function fetchData() {
       fetch(`${API}/trend`).then(r => r.json()),
     ])
     overview.value = a
+    gridSize.value = a.grid_size || 4
     trend.value = b.points
     loading.value = false
     await nextTick()
@@ -171,13 +186,15 @@ function startEncoding() {
   clearInterval(encodingTimer)
   encoding.value = true
   encodedCount.value = 0
+  const total = overview.value.regions.length
+  const delay = total > 64 ? 14 : total > 16 ? 55 : 160
   encodingTimer = setInterval(() => {
     encodedCount.value += 1
-    if (encodedCount.value >= overview.value.regions.length) {
+    if (encodedCount.value >= total) {
       clearInterval(encodingTimer)
       encoding.value = false
     }
-  }, 160)
+  }, delay)
 }
 
 async function fetchPrivacy() {
@@ -201,7 +218,7 @@ async function simulateLoads() {
     const res = await fetch(`${API}/simulate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ anomaly_ratio: anomalyRatio.value }),
+      body: JSON.stringify({ anomaly_ratio: anomalyRatio.value, size: gridSize.value }),
     })
     overview.value = await res.json()
     selectedCell.value = null
@@ -213,6 +230,15 @@ async function simulateLoads() {
   } finally {
     simulating.value = false
   }
+}
+
+async function changeGridSize() {
+  clearInterval(encodingTimer)
+  encoding.value = false
+  encodedCount.value = 0
+  selectedCell.value = null
+  privacyData.value = null
+  await simulateLoads()
 }
 
 function chooseRegion(region) { selectedCell.value = region }
@@ -280,9 +306,9 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           </div>
           <div class="overview-grid">
             <article class="panel map-panel">
-              <div class="panel-head"><div><small>REGIONAL POWER GRID</small><h3>区域电力分布</h3></div><div class="grid-actions"><div class="legend"><i class="normal"></i>正常<i class="warning"></i>偏高<i class="critical"></i>异常</div><label class="ratio-picker">关注比例<select v-model.number="anomalyRatio"><option :value="0.1">10%</option><option :value="0.25">25%</option><option :value="0.4">40%</option></select></label><button class="outline compact" :disabled="simulating" @click="simulateLoads">{{ simulating ? '生成中…' : '随机生成负荷' }}</button></div></div>
-              <div class="power-grid">
-                <button v-for="region in spatialRegions" :key="region.code" :class="[statusClass(region.status), { selected: currentRegion.code === region.code }]" @click="chooseRegion(region)">
+              <div class="panel-head"><div><small>REGIONAL POWER GRID</small><h3>区域电力分布</h3></div><div class="grid-actions"><div class="legend"><i class="normal"></i>正常<i class="warning"></i>偏高<i class="critical"></i>异常</div><label class="ratio-picker">区域规模<select v-model.number="gridSize" @change="changeGridSize"><option v-for="size in gridOptions" :key="size" :value="size">{{ size }}×{{ size }}</option></select></label><label class="ratio-picker">关注比例<select v-model.number="anomalyRatio"><option :value="0.1">10%</option><option :value="0.25">25%</option><option :value="0.4">40%</option></select></label><button class="outline compact" :disabled="simulating" @click="simulateLoads">{{ simulating ? '生成中…' : '随机生成负荷' }}</button></div></div>
+              <div class="power-grid" :class="gridDensityClass" :style="{ gridTemplateColumns: gridColumns }">
+                <button v-for="region in spatialRegions" :key="region.code" :class="[statusClass(region.status), { selected: currentRegion.code === region.code }]" :title="`${region.name} · ${region.code} · ${region.load}%`" @click="chooseRegion(region)">
                   <small>{{ region.code }}</small><strong>{{ region.load }}%</strong><span>{{ region.name }}</span>
                 </button>
                 <svg class="hilbert-overlay" viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg>
@@ -292,7 +318,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
               <div class="panel-head"><div><small>REGION DETAIL</small><h3>{{ currentRegion.name }} · {{ currentRegion.code }}</h3></div><span :class="['status-pill', statusClass(currentRegion.status)]">{{ statusText[currentRegion.status] }}</span></div>
               <div class="load-ring" :style="{ '--load': `${currentRegion.load * 3.6}deg` }"><div><strong>{{ currentRegion.load }}</strong><span>% 区域负荷</span></div></div>
               <dl><div><dt>接入设备</dt><dd>{{ currentRegion.devices }} 台</dd></div><div><dt>电压均值</dt><dd>{{ currentRegion.voltage }} V</dd></div><div><dt>聚合指数</dt><dd>{{ currentRegion.aggregate }}</dd></div><div><dt>空间坐标</dt><dd>({{ currentRegion.x }}, {{ currentRegion.y }})</dd></div></dl>
-              <p class="metric-note">聚合指数 = 该区域 {{ currentRegion.devices }} 台设备的负荷经 DPF 聚合后的总量，即论文中管理部门对各区域求和得到的结果；接入设备数与电压均值不随模拟刷新变化。</p>
+              <p class="metric-note">聚合指数 = 该区域 {{ currentRegion.devices }} 台设备的负荷经 DPF 聚合后的总量，即论文中管理部门对各区域求和得到的结果；总接入设备数固定为 {{ overview.metrics.devices }} 台，网格越细，单区域设备越少。</p>
               <button class="primary" @click="go('results')">查看分析结果 <span>→</span></button>
             </article>
           </div>
@@ -302,9 +328,9 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           <div class="section-title"><div><span>03 / HILBERT ENCODING</span><h2>希尔伯特空间编码</h2></div><p>将二维电网区域映射为具有空间局部性的一维序列，降低区域数据处理开销。</p></div>
           <div class="feature-layout">
             <article class="panel encoding-card">
-              <div class="panel-head"><div><small>2ND ORDER CURVE · DEMO</small><h3>二维位置到一维编码</h3></div><button class="primary compact" @click="startEncoding">{{ encoding ? '编码中…' : '开始编码' }}</button></div>
-              <div class="encode-grid">
-                <button v-for="region in spatialRegions" :key="region.code" :class="[{ passed: regionIndex(region) < encodedCount, current: regionIndex(region) === encodedCount - 1 }, statusClass(region.status)]" @click="chooseRegion(region)"><span>{{ regionIndex(region) }}</span><b>{{ region.code }}</b><small>({{ region.x }},{{ region.y }})</small></button>
+              <div class="panel-head"><div><small>{{ curveOrderLabel }}</small><h3>二维位置到一维编码</h3></div><div class="grid-actions"><label class="ratio-picker">区域规模<select v-model.number="gridSize" @change="changeGridSize"><option v-for="size in gridOptions" :key="size" :value="size">{{ size }}×{{ size }}</option></select></label><button class="primary compact" @click="startEncoding">{{ encoding ? '编码中…' : '开始编码' }}</button></div></div>
+              <div class="encode-grid" :class="gridDensityClass" :style="{ gridTemplateColumns: gridColumns }">
+                <button v-for="region in spatialRegions" :key="region.code" :class="[{ passed: regionIndex(region) < encodedCount, current: regionIndex(region) === encodedCount - 1 }, statusClass(region.status)]" :title="`${region.name} · ${region.code} · (${region.x},${region.y})`" @click="chooseRegion(region)"><span>{{ regionIndex(region) }}</span><b>{{ region.code }}</b><small>({{ region.x }},{{ region.y }})</small></button>
                 <svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg>
               </div>
             </article>
@@ -316,13 +342,13 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           </div>
           <article class="panel encoding-compare">
             <div class="compare-copy"><small>WHY HILBERT CURVE</small><h3>为什么使用空间填充曲线</h3><p>逐行编码在换行位置会让连续编号跨越较大的物理距离；Hilbert曲线通过递归旋转和连接，使序列中相邻编码尽可能对应现实中的相邻区域。</p><div class="locality-metric"><span>空间局部性</span><b>Hilbert 更优</b></div></div>
-            <div class="scan-demo"><div class="compare-title"><span>普通逐行扫描</span><b>跨行跳跃</b></div><div class="mini-grid row-scan"><i v-for="region in spatialRegions" :key="region.code">{{ region.y * 4 + region.x }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="rowScanPath" /></svg></div></div>
-            <div class="scan-demo"><div class="compare-title"><span>Hilbert曲线扫描</span><b class="good">保持邻近</b></div><div class="mini-grid hilbert-scan"><i v-for="region in spatialRegions" :key="region.code">{{ regionIndex(region) }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg></div></div>
+            <div class="scan-demo"><div class="compare-title"><span>普通逐行扫描</span><b>跨行跳跃</b></div><div class="mini-grid row-scan" :class="gridDensityClass" :style="{ gridTemplateColumns: gridColumns }"><i v-for="region in spatialRegions" :key="region.code">{{ rowScanIndex(region) }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="rowScanPath" /></svg></div></div>
+            <div class="scan-demo"><div class="compare-title"><span>Hilbert曲线扫描</span><b class="good">保持邻近</b></div><div class="mini-grid hilbert-scan" :class="gridDensityClass" :style="{ gridTemplateColumns: gridColumns }"><i v-for="region in spatialRegions" :key="region.code">{{ regionIndex(region) }}</i><svg viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg></div></div>
           </article>
         </section>
 
         <section v-show="active === 'devices'" class="page">
-          <div class="section-title"><div><span>02 / IOT MONITORING</span><h2>物联网设备监测</h2></div><p>16 个区域感知节点分别汇集辖区内智能电表、充电站和变压器监测器的数据。</p></div>
+          <div class="section-title"><div><span>02 / IOT MONITORING</span><h2>物联网设备监测</h2></div><p>{{ overview.metrics.regions }} 个区域感知节点分别汇集辖区内智能电表、充电站和变压器监测器的数据。</p></div>
           <article class="panel table-panel">
             <div class="panel-head"><div><small>LIVE SENSOR NODES</small><h3>分布式感知节点</h3></div><span class="live-badge"><i></i>LIVE</span></div>
             <div class="device-table">
@@ -350,14 +376,14 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
           <article class="panel dpf-detail" v-if="privacyData">
             <div class="panel-head"><div><small>DPF EVALUATION · ALL {{ privacyData.evaluation.codes.length }} CODES</small><h3>两个密钥在全部区域编码上的求值</h3></div><span class="status-pill state-normal">α = {{ privacyData.target.code }} · β = {{ privacyData.target.load }}</span></div>
             <div class="dpf-table">
-              <div class="dpf-row dpf-head"><span class="dpf-label">区域编码 x</span><b v-for="c in privacyData.evaluation.codes" :key="c" :class="{ target: c === privacyData.target.code }">{{ c }}</b></div>
-              <div class="dpf-row"><span class="dpf-label">Eval(0, k₀, x)</span><b v-for="(v, i) in privacyData.evaluation.server_a" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
-              <div class="dpf-row"><span class="dpf-label">Eval(1, k₁, x)</span><b v-for="(v, i) in privacyData.evaluation.server_b" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
-              <div class="dpf-row dpf-sum"><span class="dpf-label">相加 mod {{ privacyData.field }}</span><b v-for="(v, i) in privacyData.evaluation.sum" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
+              <div class="dpf-row dpf-head" :style="{ gridTemplateColumns: dpfColumns }"><span class="dpf-label">区域编码 x</span><b v-for="c in privacyData.evaluation.codes" :key="c" :class="{ target: c === privacyData.target.code }">{{ c }}</b></div>
+              <div class="dpf-row" :style="{ gridTemplateColumns: dpfColumns }"><span class="dpf-label">Eval(0, k₀, x)</span><b v-for="(v, i) in privacyData.evaluation.server_a" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
+              <div class="dpf-row" :style="{ gridTemplateColumns: dpfColumns }"><span class="dpf-label">Eval(1, k₁, x)</span><b v-for="(v, i) in privacyData.evaluation.server_b" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
+              <div class="dpf-row dpf-sum" :style="{ gridTemplateColumns: dpfColumns }"><span class="dpf-label">相加 mod {{ privacyData.field }}</span><b v-for="(v, i) in privacyData.evaluation.sum" :key="i" :class="{ target: privacyData.evaluation.codes[i] === privacyData.target.code }">{{ v }}</b></div>
             </div>
             <div class="dpf-notes">
               <p><b>① 密钥生成 Gen(λ, α, β) → (k₀, k₁)：</b>IoT 设备把区域位置编码为 α = {{ privacyData.target.code }}、负荷记为 β = {{ privacyData.target.load }}，生成一对密钥：{{ privacyData.keys.server_a }} 交给服务器 A，{{ privacyData.keys.server_b }} 交给服务器 B；任一密钥单独看都不包含 α 与 β 的信息。</p>
-              <p><b>② 双服务器求值 Eval(i, kᵢ, x)：</b>两台服务器各自在全部 16 个区域编码上求值，得到两组份额，单组份额与随机数不可区分。</p>
+              <p><b>② 双服务器求值 Eval(i, kᵢ, x)：</b>两台服务器各自在全部 {{ privacyData.evaluation.codes.length }} 个区域编码上求值，得到两组份额，单组份额与随机数不可区分。</p>
               <p><b>③ 部门求和：</b>两组份额相加后，只有 α = {{ privacyData.target.code }} 位置得到 β = {{ privacyData.target.load }}，其余位置为 0，因此管理部门只恢复出目标区域的统计值。</p>
               <p class="demo-note">演示份额用有限域 ℤ{{ privacyData.field }} 上的加法表示组合关系；论文中的真实份额由伪随机生成器递归展开，单个数值不能解释为用户负荷。</p>
             </div>
@@ -367,7 +393,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
         <section v-show="active === 'results'" class="page">
           <div class="section-title"><div><span>05 / ANALYTICS</span><h2>电力分布分析结果</h2></div><p>呈现区域分布模式并识别可能存在不均衡的范围，为管理部门进一步处置提供依据。</p></div>
           <div class="results-grid">
-            <article class="panel chart-panel"><div class="panel-head"><div><small>REGIONAL LOAD · CURRENT ROUND</small><h3>本轮 16 区域负荷分布</h3></div><span class="delta">{{ trendSummary }}</span></div><div ref="chartEl" class="chart"></div></article>
+            <article class="panel chart-panel"><div class="panel-head"><div><small>REGIONAL LOAD · CURRENT ROUND</small><h3>本轮 {{ overview.metrics.regions }} 区域负荷分布</h3></div><span class="delta">{{ trendSummary }}</span></div><div ref="chartEl" class="chart"></div></article>
             <article class="panel alert-panel"><small>REGIONAL INSIGHTS</small><h3>重点关注区域</h3><div class="alert-item" v-for="r in criticalRegions" :key="r.code"><span :class="statusClass(r.status)">{{ r.code }}</span><div><b>{{ r.name }}</b><p>聚合负荷 {{ r.load }}%，高于邻近区域</p></div><strong>{{ r.status === 'critical' ? '高' : '中' }}</strong></div></article>
           </div>
           <article class="panel conclusion"><div><span>ANALYSIS SUMMARY</span><h3>分析结论</h3></div><p>系统发现 <b>{{ criticalRegions.map(r => r.name).join('、') }}</b> 的聚合负荷存在偏高趋势，可能出现电力分布不均衡。建议电力管理部门优先检查相关区域，并结合实时运行数据进一步确认。</p><button class="outline" @click="go('overview')">返回区域地图</button></article>

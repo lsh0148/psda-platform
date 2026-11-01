@@ -1,0 +1,28 @@
+.power-grid.grid-medium,
+.encode-grid.grid-medium,
+.mini-grid.grid-medium { gap: 3px; }
+
+.power-grid.grid-dense,
+.encode-grid.grid-dense,
+.mini-grid.grid-dense { gap: 1px; }
+
+.power-grid.grid-medium button small { font-size: 7px; }
+.power-grid.grid-medium button strong { font-size: 12px; margin: 2px; }
+.power-grid.grid-medium button span { font-size: 7px; }
+
+.power-grid.grid-dense button { border-radius: 1px; }
+.power-grid.grid-dense button:hover { transform: none; }
+.power-grid.grid-dense button small,
+.power-grid.grid-dense button span { display: none; }
+.power-grid.grid-dense button strong { font-size: 8px; margin: 0; }
+
+.encode-grid.grid-medium button b { font-size: 9px; }
+.encode-grid.grid-medium button small { font-size: 7px; }
+
+.encode-grid.grid-dense button { display: grid; place-content: center; }
+.encode-grid.grid-dense button b,
+.encode-grid.grid-dense button small { display: none; }
+.encode-grid.grid-dense button span { top: 2px; left: 3px; font-size: 7px; }
+
+.mini-grid.grid-medium i { font-size: 6px; }
+.mini-grid.grid-dense i { font-size: 0; }
