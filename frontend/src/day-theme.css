@@ -148,6 +148,7 @@
 .theme-day .dpf-row b { color: #514a43; background: #faf6ef; border-color: #d9cfc1; }
 .theme-day .dpf-row .dpf-label,
 .theme-day .dpf-notes p { color: #756b60; }
+.theme-day .dpf-row .dpf-label { background: #fffdf8; border-right-color: #d9cfc1; }
 .theme-day .dpf-head b { color: #807467; background: transparent; border-color: transparent; }
 .theme-day .dpf-row b.target,
 .theme-day .dpf-sum b.target { color: #fffdf8; background: #b65332; border-color: #b65332; }

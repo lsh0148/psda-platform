@@ -1,0 +1,17 @@
+.header-actions { gap: 12px; }
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.icon-button svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+  transition: transform .35s ease;
+}
+
+.icon-button:hover svg { transform: rotate(-90deg); }
+

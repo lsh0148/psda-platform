@@ -27,6 +27,7 @@ let chart
 let perfCharts = []
 let liveTimer
 let encodingTimer
+let privacyTimer
 
 const nav = [
   ['overview', '系统总览', 'Overview'],
@@ -85,13 +86,23 @@ const curvePath = (list) => {
   return list.map(r => `${step / 2 + r.x * step},${step / 2 + r.y * step}`).join(' ')
 }
 const rowScanIndex = (region) => region.y * activeGridSize.value + region.x
-const dpfColumns = computed(() => `150px repeat(${privacyData.value?.evaluation?.codes?.length || 16}, minmax(34px, 1fr))`)
+const dpfColumns = computed(() => {
+  const codes = privacyData.value?.evaluation?.codes || []
+  const count = codes.length || 16
+  const bits = codes[0]?.length || 4
+  const cellWidth = Math.max(42, bits * 7 + 10)
+  return `150px repeat(${count}, ${cellWidth}px)`
+})
 const hilbertPath = computed(() => curvePath(overview.value.regions))
 const rowScanPath = computed(() => curvePath(spatialRegions.value))
 const currentStep = computed(() => {
   if (active.value === 'devices') return 0
   if (active.value === 'encoding') return 1
-  if (active.value === 'privacy') return privacyStep.value >= 2 ? 3 : 2
+  if (active.value === 'privacy') {
+    if (privacyStep.value >= 3) return 4
+    if (privacyStep.value >= 2) return 3
+    return 2
+  }
   if (active.value === 'results') return 5
   return -1
 })
@@ -204,12 +215,28 @@ async function fetchPrivacy() {
 }
 
 async function runPrivacy() {
+  clearInterval(privacyTimer)
   await fetchPrivacy()
   privacyStep.value = 0
-  const timer = setInterval(() => {
+  privacyTimer = setInterval(() => {
     privacyStep.value += 1
-    if (privacyStep.value >= 3) clearInterval(timer)
+    if (privacyStep.value >= 3) clearInterval(privacyTimer)
   }, 850)
+}
+
+function resetSystem() {
+  clearInterval(liveTimer)
+  clearInterval(encodingTimer)
+  clearInterval(privacyTimer)
+  live.value = false
+  encoding.value = false
+  encodedCount.value = 0
+  selectedCell.value = null
+  privacyStep.value = 0
+  privacyData.value = null
+  perfScenario.value = 'length'
+  anomalyRatio.value = 0.25
+  active.value = 'overview'
 }
 
 async function simulateLoads() {
@@ -258,7 +285,7 @@ onMounted(() => {
   fetchData().then(fetchPrivacy)
   window.addEventListener('resize', () => { chart?.resize(); perfCharts.forEach(c => c.resize()) })
 })
-onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); chart?.dispose(); perfCharts.forEach(c => c.dispose()) })
+onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); clearInterval(privacyTimer); chart?.dispose(); perfCharts.forEach(c => c.dispose()) })
 </script>
 
 <template>
@@ -279,10 +306,10 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
     <main>
       <header>
         <div><p>SMART GRID · PRIVACY PRESERVING</p><h1>隐私保护型电力分布分析平台</h1></div>
-        <div class="header-actions"><span class="last-update">数据更新 {{ overview.updated_at }}</span><button class="outline theme-toggle" @click="toggleTheme">{{ theme === 'night' ? '☀ 白天模式' : '◐ 夜间模式' }}</button><button class="outline" @click="toggleLive">{{ live ? '暂停实时刷新' : '启动实时监测' }}</button></div>
+        <div class="header-actions"><span class="last-update">数据更新 {{ overview.updated_at }}</span><button class="outline icon-button" title="系统重置" aria-label="系统重置" @click="resetSystem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.93 4.93A10 10 0 1 1 2 12h2a8 8 0 1 0 2.34-5.66L9 9H2V2l2.93 2.93Z"/></svg><span>系统重置</span></button><button class="outline theme-toggle" @click="toggleTheme">{{ theme === 'night' ? '☀ 白天模式' : '◐ 夜间模式' }}</button><button class="outline" @click="toggleLive">{{ live ? '暂停实时刷新' : '启动实时监测' }}</button></div>
       </header>
 
-      <div class="process-bar">
+      <div v-if="!['security', 'performance'].includes(active)" class="process-bar">
         <div class="process-caption"><span>PSDA PROCESS</span><b>{{ currentStep < 0 ? '系统待命' : processSteps[currentStep].title }}</b></div>
         <div class="process-line">
           <div class="process-fill" :style="{ width: currentStep < 0 ? '0%' : `${currentStep / (processSteps.length - 1) * 100}%` }"></div>
@@ -308,7 +335,7 @@ onBeforeUnmount(() => { clearInterval(liveTimer); clearInterval(encodingTimer); 
             <article class="panel map-panel">
               <div class="panel-head"><div><small>REGIONAL POWER GRID</small><h3>区域电力分布</h3></div><div class="grid-actions"><div class="legend"><i class="normal"></i>正常<i class="warning"></i>偏高<i class="critical"></i>异常</div><label class="ratio-picker">区域规模<select v-model.number="gridSize" @change="changeGridSize"><option v-for="size in gridOptions" :key="size" :value="size">{{ size }}×{{ size }}</option></select></label><label class="ratio-picker">关注比例<select v-model.number="anomalyRatio"><option :value="0.1">10%</option><option :value="0.25">25%</option><option :value="0.4">40%</option></select></label><button class="outline compact" :disabled="simulating" @click="simulateLoads">{{ simulating ? '生成中…' : '随机生成负荷' }}</button></div></div>
               <div class="power-grid" :class="gridDensityClass" :style="{ gridTemplateColumns: gridColumns }">
-                <button v-for="region in spatialRegions" :key="region.code" :class="[statusClass(region.status), { selected: currentRegion.code === region.code }]" :title="`${region.name} · ${region.code} · ${region.load}%`" @click="chooseRegion(region)">
+                <button v-for="region in spatialRegions" :key="region.code" :class="[statusClass(region.status), { selected: selectedCell?.code === region.code }]" :title="`${region.name} · ${region.code} · ${region.load}%`" @click="chooseRegion(region)">
                   <small>{{ region.code }}</small><strong>{{ region.load }}%</strong><span>{{ region.name }}</span>
                 </button>
                 <svg class="hilbert-overlay" viewBox="0 0 400 400" preserveAspectRatio="none"><polyline :points="hilbertPath" /></svg>

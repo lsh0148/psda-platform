@@ -12,5 +12,6 @@ import './grid-size.css'
 import './dpf-detail.css'
 import './device-monitor.css'
 import './day-theme.css'
+import './reset-control.css'
 
 createApp(App).mount('#app')
